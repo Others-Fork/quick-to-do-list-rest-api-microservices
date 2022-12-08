@@ -1,0 +1,145 @@
+version: '3.8'
+
+services:
+  microservices-cloud-config-server:
+    image: ashrafplanet/qtdl-microservices-cloud-config-server:1.0.0-SNAPSHOT
+    ports:
+      - "8888:8888"
+    networks:
+      - qtdlmicroservices-network
+    # environment:
+      # SPRING.CLOUD.CONFIG.SERVER.GIT.URI: https://github.com/ashrafplanet/quick-to-do-list-rest-api-microservices_settings.git
+    # mem_limit: 700m
+
+  microservices-eureka-naming-server:
+    image: ashrafplanet/qtdl-microservices-eureka-naming-server:1.0.0-SNAPSHOT
+    ports:
+      - "8761:8761"
+    networks:
+      - qtdlmicroservices-network
+
+  microservices-rabbitmq-server:
+    image: rabbitmq:3.8.12-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - qtdlmicroservices-network
+
+  microservices-zipkin-distributed-tracing-server:
+    image: openzipkin/zipkin:2.23
+    ports:
+      - "9411:9411"
+    networks:
+      - qtdlmicroservices-network
+    depends_on:
+      - microservices-rabbitmq-server
+    environment:
+      RABBIT_URI: amqp://guest:guest@microservices-rabbitmq-server:5672
+    restart: always
+
+  microservices-api-gateway:
+    image: ashrafplanet/qtdl-microservices-api-gateway:1.0.0-SNAPSHOT
+    ports:
+      - "8765:8765"
+    networks:
+      - qtdlmicroservices-network
+    depends_on:
+      - microservices-eureka-naming-server
+      - microservices-rabbitmq-server
+      - microservices-zipkin-distributed-tracing-server
+    environment:
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://microservices-eureka-naming-server:8761/eureka
+      SPRING.ZIPKIN.BASEURL: http://microservices-zipkin-distributed-tracing-server:9411
+      RABBIT_URI: amqp://guest:guest@microservices-rabbitmq-server:5672
+      SPRING.RABBITMQ.HOST: microservices-rabbitmq-server
+      # SPRING_RABBITMQ_HOST: microservices-rabbitmq-server
+      # SPRING_ZIPKIN_SENDER_TYPE: rabbit
+
+  text-cleanup-service-mysql-server:
+    image: mysql:8.0.31
+    ports:
+      - "${TEXT_CLEANUP_SERVICE_MYSQL_SERVER_PORTS1}:3306"
+      - "${TEXT_CLEANUP_SERVICE_MYSQL_SERVER_PORTS2}:33060"
+    networks:
+      - qtdlmicroservices-network
+    environment:
+      MYSQL_ROOT_PASSWORD: $TEXT_CLEANUP_SERVICE_MYSQL_SERVER_MYSQL_ROOT_PASSWORD
+      # MYSQL_ROOT_HOST: text-cleanup-service-mysql-server
+      MYSQL_DATABASE: $TEXT_CLEANUP_SERVICE_MYSQL_SERVER_MYSQL_DATABASE
+      MYSQL_USER: $TEXT_CLEANUP_SERVICE_MYSQL_SERVER_MYSQL_USER
+      MYSQL_PASSWORD: $TEXT_CLEANUP_SERVICE_MYSQL_SERVER_MYSQL_PASSWORD
+    restart: unless-stopped
+
+  text-cleanup-service:
+    image: ashrafplanet/qtdl-microservices-text-cleanup-service:1.0.0-SNAPSHOT
+    # env_file:
+      # - ./text-cleanup-service-mysql-server.env
+      # - ./text-cleanup-service.env
+    ports:
+      - "8000:8000"
+    networks:
+      - qtdlmicroservices-network
+    depends_on:
+      - text-cleanup-service-mysql-server
+      - microservices-cloud-config-server
+      - microservices-eureka-naming-server
+      - microservices-rabbitmq-server
+      - microservices-zipkin-distributed-tracing-server
+    environment:
+      SPRING.DATASOURCE.URL: "jdbc:mysql://${TEXT_CLEANUP_SERVICE_MYSQL_SERVER_NAME:-host.docker.internal}:${TEXT_CLEANUP_SERVICE_MYSQL_SERVER_PORTS1}/${TEXT_CLEANUP_SERVICE_MYSQL_SERVER_MYSQL_DATABASE}"
+      SPRING.DATASOURCE.USERNAME: $TEXT_CLEANUP_SERVICE_MYSQL_SERVER_MYSQL_USER
+      SPRING.DATASOURCE.PASSWORD: $TEXT_CLEANUP_SERVICE_MYSQL_SERVER_MYSQL_PASSWORD
+      SPRING.CONFIG.IMPORT: optional:configserver:http://microservices-cloud-config-server:8888
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://microservices-eureka-naming-server:8761/eureka
+      SPRING.ZIPKIN.BASEURL: http://microservices-zipkin-distributed-tracing-server:9411
+      RABBIT_URI: amqp://guest:guest@microservices-rabbitmq-server:5672
+      SPRING.RABBITMQ.HOST: microservices-rabbitmq-server
+      SPRING.SECURITY.USER.NAME: $TEXT_CLEANUP_SERVICE_SPRING_SECURITY_USER_NAME
+      SPRING.SECURITY.USER.PASSWORD: $TEXT_CLEANUP_SERVICE_SPRING_SECURITY_USER_PASSWORD
+    # restart: on-failure
+
+  quick-todo-list-service-mysql-server:
+    image: mysql:8.0.31
+    ports:
+      - "${QUICK_TODO_LIST_SERVICE_MYSQL_SERVER_PORTS1}:3306"
+      - "${QUICK_TODO_LIST_SERVICE_MYSQL_SERVER_PORTS2}:33060"
+    networks:
+      - qtdlmicroservices-network
+    environment:
+      MYSQL_ROOT_PASSWORD: $QUICK_TODO_LIST_SERVICE_MYSQL_SERVER_MYSQL_ROOT_PASSWORD
+      MYSQL_DATABASE: $QUICK_TODO_LIST_SERVICE_MYSQL_SERVER_MYSQL_DATABASE
+      MYSQL_USER: $QUICK_TODO_LIST_SERVICE_MYSQL_SERVER_MYSQL_USER
+      MYSQL_PASSWORD: $QUICK_TODO_LIST_SERVICE_MYSQL_SERVER_MYSQL_PASSWORD
+    restart: unless-stopped
+
+  quick-todo-list-service:
+    image: ashrafplanet/qtdl-microservices-quick-todo-list-service:1.0.0-SNAPSHOT
+    ports:
+      - "8100:8100"
+    networks:
+      - qtdlmicroservices-network
+    depends_on:
+      - quick-todo-list-service-mysql-server
+      - microservices-cloud-config-server
+      - microservices-eureka-naming-server
+      - microservices-rabbitmq-server
+      - microservices-zipkin-distributed-tracing-server
+    environment:
+      SPRING.DATASOURCE.URL: "jdbc:mysql://${QUICK_TODO_LIST_SERVICE_MYSQL_SERVER_NAME:-host.docker.internal}:${QUICK_TODO_LIST_SERVICE_MYSQL_SERVER_PORTS1}/${QUICK_TODO_LIST_SERVICE_MYSQL_SERVER_MYSQL_DATABASE}"
+      SPRING.DATASOURCE.USERNAME: $QUICK_TODO_LIST_SERVICE_MYSQL_SERVER_MYSQL_USER
+      SPRING.DATASOURCE.PASSWORD: $QUICK_TODO_LIST_SERVICE_MYSQL_SERVER_MYSQL_PASSWORD
+      SPRING.CONFIG.IMPORT: optional:configserver:http://microservices-cloud-config-server:8888
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://microservices-eureka-naming-server:8761/eureka
+      SPRING.ZIPKIN.BASEURL: http://microservices-zipkin-distributed-tracing-server:9411
+      RABBIT_URI: amqp://guest:guest@microservices-rabbitmq-server:5672
+      SPRING.RABBITMQ.HOST: microservices-rabbitmq-server
+      SPRING.SECURITY.USER.NAME: $QUICK_TODO_LIST_SERVICE_SPRING_SECURITY_USER_NAME
+      SPRING.SECURITY.USER.PASSWORD: $QUICK_TODO_LIST_SERVICE_SPRING_SECURITY_USER_PASSWORD
+      TEXTCLEANUPSERVICE.CREDENTIALS.USERNAME: $TEXT_CLEANUP_SERVICE_SPRING_SECURITY_USER_NAME
+      TEXTCLEANUPSERVICE.CREDENTIALS.PASSWORD: $TEXT_CLEANUP_SERVICE_SPRING_SECURITY_USER_PASSWORD
+      TEXTCLEANUPSERVICE.CREDENTIALS.AUTHORIZATION: $TEXT_CLEANUP_SERVICE_SPRING_SECURITY_USER_AUTHORIZATION
+    # restart: on-failure
+
+networks:
+  qtdlmicroservices-network:
