@@ -31,4 +31,5 @@ Some tech used:
 • Spring Security • Basic Authentication
 
 • Docker • docker-compose.yaml + .env file • Docker Registry: https://hub.docker.com/u/ashrafplanet
+
 • Kubernetes • deployment.yaml + ConfigMaps
