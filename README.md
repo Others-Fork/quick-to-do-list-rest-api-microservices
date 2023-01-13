@@ -35,4 +35,4 @@ Some tech used:
 
 • Docker • docker-compose.yaml + .env file • Docker Registry: https://hub.docker.com/u/ashrafplanet
 
-• Kubernetes • deployment.yaml + ConfigMaps
+• Kubernetes • yaml config file (secret, pv, pvc, configMap, mysql, deployment, service …)
