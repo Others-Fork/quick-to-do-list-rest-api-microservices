@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # name: mysql
+  name: deployment-mysql-3308
+  namespace: default
+  labels:
+    app: label-mysql-3308
+spec:
+  selector:
+    matchLabels:
+      app: label-mysql-3308
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: label-mysql-3308
+    spec:
+      containers:
+      - image: mysql:8.0.31
+        name: container-mysql-3308
+        imagePullPolicy: IfNotPresent
+        env:
+        # - name: MYSQL_ROOT_PASSWORD
+        #   value: 
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secret-mysql-3308
+              key: mysqlRootPassword
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: secret-mysql-3308
+              key: mysqlDatabase
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: secret-mysql-3308
+              key: mysqlUser
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secret-mysql-3308
+              key: mysqlPassword
+        ports:
+        - containerPort: 3308
+          name: port-mysql-3308
+        volumeMounts:
+        - name: persistent-storage-mysql-3308
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: persistent-storage-mysql-3308
+        persistentVolumeClaim:
+          claimName: pvc-mysql-3308
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-mysql-3308
+  namespace: default
+  labels:
+    app: label-mysql-3308
+spec:
+  ports:
+  - port: 3308
+    protocol: TCP
+    targetPort: 3308
+  selector:
+    app: label-mysql-3308
+  clusterIP: None

@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-quick-todo-list-service
+  namespace: default
+  labels:
+    app: label-quick-todo-list-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: label-quick-todo-list-service
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: label-quick-todo-list-service
+    spec:
+      containers:
+      - image: ashrafplanet/qtdl-microservices-k8s-quick-todo-list-service:1.0.0-SNAPSHOT
+        name: container-quick-todo-list-service
+        imagePullPolicy: IfNotPresent
+        envFrom:
+          - configMapRef:
+              name: configmap-quick-todo-list-service
+        ports:
+        - containerPort: 8100
+          name: port-tcs-8100
+        readinessProbe:
+          httpGet:
+            port: 8100
+            path: /actuator/health/readiness
+          # initialDelaySeconds: 5
+        livenessProbe:
+          httpGet:
+            port: 8100
+            path: /actuator/health/liveness
+          # initialDelaySeconds: 5
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quick-todo-list-service
+  namespace: default
+  labels:
+    app: label-quick-todo-list-service
+spec:
+  ports:
+  - port: 8100
+    protocol: TCP
+    targetPort: 8100
+  selector:
+    app: label-quick-todo-list-service
+  sessionAffinity: None
+  type: LoadBalancer
+  # type: NodePort
