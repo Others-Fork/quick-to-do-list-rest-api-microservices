@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-text-cleanup-service
+  namespace: default
+  labels:
+    app: label-text-cleanup-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: label-text-cleanup-service
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: label-text-cleanup-service
+    spec:
+      containers:
+      - image: ashrafplanet/qtdl-microservices-k8s-text-cleanup-service:1.0.0-SNAPSHOT
+        name: container-text-cleanup-service
+        imagePullPolicy: IfNotPresent
+        envFrom:
+          - configMapRef:
+              name: configmap-text-cleanup-service
+        ports:
+        - containerPort: 8000
+          name: port-tcs-8000
+        readinessProbe:
+          httpGet:
+            port: 8000
+            path: /actuator/health/readiness
+          # initialDelaySeconds: 5
+        livenessProbe:
+          httpGet:
+            port: 8000
+            path: /actuator/health/liveness
+          # initialDelaySeconds: 5
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: text-cleanup-service
+  namespace: default
+  labels:
+    app: label-text-cleanup-service
+spec:
+  ports:
+  - port: 8000
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    app: label-text-cleanup-service
+  sessionAffinity: None
+  type: LoadBalancer
+  # type: NodePort
