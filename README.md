@@ -35,4 +35,11 @@ Some tech used:
 
 • Docker • docker-compose.yaml + .env file • Docker Registry: https://hub.docker.com/u/ashrafplanet
 
-• Kubernetes • yaml config file (secret, pv, pvc, configMap, mysql, deployment, service …)
+• Kubernetes • yaml config file (secret, configMap, pv, pvc, mysql, deployment, service, ...)
+• Multiple Instances and Load Balancer (by using ReplicaSet, LoadBalancer and strategies)
+• Auto Scaling (by using >> kubectl autoscale deployment << with some conditions to create horizontalpodautoscaler hpa)
+• Health Check • Self-Healing • Zero Downtime (by using readiness and liveness probes with actuator)
+
+
+
+
